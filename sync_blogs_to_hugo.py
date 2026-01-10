@@ -14,13 +14,13 @@ API_KEY = os.getenv('BLOGGER_API_KEY')
 BLOG_ID = os.getenv('BLOGGER_BLOG_ID')
 
 # Configuration
-OUTPUT_DIR = Path('listenings_blog/content/archive')
+OUTPUT_DIR = Path('listenings_blog/content/posts')
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 def extract_author(content):
-    """Extract author name from content using pattern: ~ Name"""
-    # Look for tilde followed by space and name
-    match = re.search(r'~\s+([A-Z][a-z]+)', content)
+    """Extract author name from content using pattern: ~Name or ~ Name"""
+    # Look for tilde followed by optional space and a single word (name)
+    match = re.search(r'~\s*([A-Z][a-z]+)', content)
     if match:
         return match.group(1)
     return None
@@ -110,11 +110,16 @@ def fetch_blogger_posts():
     
     return posts
 
-def save_post_to_file(post):
+def save_post_to_file(post, overwrite=False):
     """Save a single post as a markdown file"""
     title = post.get('title', 'Untitled')
     filename = sanitize_filename(title) + '.md'
     filepath = OUTPUT_DIR / filename
+    
+    # Check if file exists and overwrite is False
+    if filepath.exists() and not overwrite:
+        print(f"⊘ Skipped: {filename} (already exists)")
+        return None
     
     # Get content
     html_content = post.get('content', '')
@@ -135,16 +140,24 @@ def save_post_to_file(post):
     print(f"✓ Saved: {filename}")
     return filepath
 
-def main():
+def main(overwrite=False):
     print("Fetching posts from Blogger...")
     posts = fetch_blogger_posts()
     print(f"Found {len(posts)} posts")
     
     print(f"\nConverting and saving to {OUTPUT_DIR}...")
-    for post in posts:
-        save_post_to_file(post)
+    saved_count = 0
+    skipped_count = 0
     
-    print(f"\n✓ Done! Converted {len(posts)} posts to markdown.")
+    for post in posts:
+        result = save_post_to_file(post, overwrite=overwrite)
+        if result:
+            saved_count += 1
+        else:
+            skipped_count += 1
+    
+    print(f"\n✓ Done! Saved {saved_count} posts, skipped {skipped_count} existing posts.")
 
 if __name__ == '__main__':
-    main()
+    # Set overwrite=True to overwrite existing files
+    main(overwrite=True)
