@@ -26,6 +26,62 @@ def extract_author(content):
     return None
 
 
+def extract_album_info(title):
+    """
+    Extract artist, album, and year from title.
+    Expected formats:
+    - "Artist - Album"
+    - "Artist - Album (Year)"
+    - "Artist – Album"
+    - "Artist – Album (Year)"
+    """
+    # Try to extract year in parentheses at the end
+    year_match = re.search(r'\((\d{4})\)\s*$', title)
+    year = year_match.group(1) if year_match else None
+    
+    # Remove year from title for further processing
+    title_without_year = re.sub(r'\s*\(\d{4}\)\s*$', '', title).strip()
+    
+    # Split by dash (either - or –)
+    parts = re.split(r'\s*[–-]\s*', title_without_year, maxsplit=1)
+    
+    if len(parts) == 2:
+        artist = parts[0].strip()
+        album = parts[1].strip()
+        return artist, album, year
+    
+    # If no clear split, return None values
+    return None, None, year
+
+
+def create_description(title, author):
+    """
+    Create a description in the format:
+    [Artist] - [Album] ([Year]): An album recommendation by [Author] on why to listen to this album back-to-back.
+    """
+    artist, album, year = extract_album_info(title)
+    
+    if not artist or not album:
+        # Fallback if we can't parse the title
+        if author:
+            return f"An album recommendation by {author} on why to listen to this album back-to-back."
+        else:
+            return "An album recommendation on why to listen to this album back-to-back."
+    
+    # Build description
+    if year:
+        desc = f"{artist} - {album} ({year}): An album recommendation"
+    else:
+        desc = f"{artist} - {album}: An album recommendation"
+    
+    if author:
+        desc += f" by {author}"
+    
+    desc += " on why to listen to this album back-to-back."
+    
+    return desc
+
+
 def sanitize_filename(title):
     """Convert title to a safe filename"""
     # Convert to lowercase and replace spaces with hyphens
@@ -63,10 +119,15 @@ def create_frontmatter(post, author=None):
     # Escape double quotes and backslashes in title for TOML
     title_escaped = title.replace('\\', '\\\\').replace('"', '\\"')
     
+    # Create description
+    description = create_description(title, author)
+    description_escaped = description.replace('\\', '\\\\').replace('"', '\\"')
+    
     frontmatter = f"""+++
 date = '{date_str}'
 draft = false
 title = "{title_escaped}"
+description = "{description_escaped}"
 """
     
     if author:
