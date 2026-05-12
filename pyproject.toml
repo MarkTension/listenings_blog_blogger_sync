@@ -1,0 +1,9 @@
+[project]
+name = "listenings-blog"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "python-dotenv",
+    "google-api-python-client",
+    "html2text",
+]
